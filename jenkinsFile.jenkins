@@ -1,0 +1,61 @@
+Jenkinsfile (Declarative Pipeline)
+
+pipeline {
+  environment {
+
+    dockerImage = ''
+  }
+  
+  agent any
+  stages {
+  
+    stage('Clone repository of app.py') {          
+        git credentialsId: 'git', url: 'https://github.com/moshenhm/DeovopsTask/blob/main/app1.py'
+    }
+
+    stage('Building image') {
+      steps{
+        script {
+          dockerImage = docker.build -t myTestDocker:latest
+
+        }
+      }
+    }
+		
+	stage('Push to ECR') {
+        steps {
+         script{
+                docker.withRegistry('https://777777777773.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-credentials') {
+                dockerImage.push("${env.BUILD_NUMBER}")
+                dockerImage.push("latest")
+                    }
+                }
+        }
+    }
+	
+    stage('Deploy'){
+        steps {
+             sh 'kubectl apply -f deployment.yml'
+            }
+    }
+	
+
+      stage('Push Docker Image to Nexus Registry'){
+		steps {
+			sh 'docker login -u user -p password nexus.bankleumi.com:18444/repository/docker-hosted/' 
+			sh 'docker tag myTestDocker nexus.bankleumi.com:18444/myTestDocker'
+			sh 'docker push nexus.bankleumi.com:18444/myTestDocker'  
+			sh 'docker logout nexus.bankleumi.com:18444/myTestDocker'
+		}
+	  }
+	
+  }
+			
+}
+		
+	
+	
+	
+	
+	
+

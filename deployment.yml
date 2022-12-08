@@ -1,0 +1,33 @@
+	
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app1_Deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app1
+  template:
+    metadata:
+      labels:
+        app: app1
+    spec:
+      containers:
+        - name: app1_Container
+          image:777777777773.dkr.ecr.us-east-2.amazonaws.com/myTestDocker:latest
+          ports:
+            - containerPort: 8443
+      service:
+        type: NodePort
+        ports:
+          - port: 443
+            targetPort: 8443
+
+
+
+	
+  
+
+	
+

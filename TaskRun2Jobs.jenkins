@@ -1,0 +1,73 @@
+# First Jenkins job: FirstPipeline
+pipeline {
+  agent any
+
+  stages {
+  
+    stage('Clone repository of app.py') {          
+        git credentialsId: 'git', url: 'https://github.com/moshenhm/DeovopsTask/blob/main/app1.py'
+    }
+
+    stage('Building image') {
+      steps{
+        script {
+          dockerImage = docker.build -t myTestDocker:latest
+        }
+      }
+
+	stage('Go to second Pipeline') {
+		steps {
+			build(job:'SecondPipeline')
+		}
+	}
+  
+	stage('Deploy'){
+        steps {
+             sh 'kubectl apply -f deployment.yml'
+            }
+    }  
+  }
+
+  post {
+    success {
+      // Save the binary files and test results in the Jenkins workspace
+      archiveArtifacts artifacts: 'bin/*', fingerprint: true
+      archiveArtifacts artifacts: 'test-results/*.xml', fingerprint: true
+    }
+  }
+}
+
+# Second Jenkins job: SecondPipeline
+pipeline {
+  agent any
+
+  stages {
+    stage('Copy Artifacts') {
+      steps {
+        // Copy the binary files and test results from the first job
+        copyArtifacts projectName: 'build-and-test', filter: 'bin/*'
+        copyArtifacts projectName: 'build-and-test', filter: 'test-results/*.xml'
+      }
+    }
+	
+	stage('Push Docker Image to Nexus Registry'){
+		steps {
+			sh 'docker login -u user -p password nexus.bankleumi.com:18444/repository/docker-hosted/' 
+			sh 'docker tag myTestDocker nexus.bankleumi.com:18444/myTestDocker'
+			sh 'docker push nexus.bankleumi.com:18444/myTestDocker'  
+			sh 'docker logout nexus.bankleumi.com:18444/myTestDocker'
+		}
+	  }
+	
+	stage('Push to ECR') {
+        steps {
+         script{
+                docker.withRegistry('https://777777777773.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-credentials') {
+                dockerImage.push("${env.BUILD_NUMBER}")
+                dockerImage.push("latest")}       
+                }
+        }
+    }
+	
+  }
+}
